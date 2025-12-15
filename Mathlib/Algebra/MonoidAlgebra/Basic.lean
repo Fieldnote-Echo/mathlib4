@@ -46,7 +46,7 @@ values on the monomials `single a 1`. -/]
 theorem nonUnitalAlgHom_ext [DistribMulAction R A] {φ₁ φ₂ : R[M] →ₙₐ[R] A}
     (h : ∀ x, φ₁ (single x 1) = φ₂ (single x 1)) : φ₁ = φ₂ :=
   NonUnitalAlgHom.to_distribMulActionHom_injective <|
-    Finsupp.distribMulActionHom_ext' fun a => DistribMulActionHom.ext_ring (h a)
+    MonoidAlgebra.distribMulActionHom_ext' fun a => DistribMulActionHom.ext_ring (h a)
 
 /-- See note [partially-applied ext lemmas]. -/
 @[ext high]
@@ -60,28 +60,14 @@ non-associative algebras over `R` is adjoint to the forgetful functor in the oth
 @[simps apply_apply symm_apply]
 def liftMagma [Module R A] [IsScalarTower R A A] [SMulCommClass R A A] :
     (M →ₙ* A) ≃ (R[M] →ₙₐ[R] A) where
-  toFun f :=
-    { liftAddHom fun x => (smulAddHom R A).flip (f x) with
-      toFun := fun a => a.sum fun m t => t • f m
-      map_smul' := fun t' a => by
-        rw [Finsupp.smul_sum, sum_smul_index']
-        · simp_rw [smul_assoc, MonoidHom.id_apply]
-        · intro m
-          exact zero_smul R (f m)
-      map_mul' := fun a₁ a₂ => by
-        let g : M → R → A := fun m t => t • f m
-        have h₁ : ∀ m, g m 0 = 0 := by
-          intro m
-          exact zero_smul R (f m)
-        have h₂ : ∀ (m) (t₁ t₂ : R), g m (t₁ + t₂) = g m t₁ + g m t₂ := by
-          intros
-          rw [← add_smul]
-        -- Porting note: `reducible` cannot be `local` so proof gets long.
-        simp_rw [Finsupp.mul_sum, Finsupp.sum_mul, smul_mul_smul_comm, ← f.map_mul, mul_def,
-          sum_comm a₂ a₁]
-        rw [sum_sum_index h₁ h₂]; congr; ext
-        rw [sum_sum_index h₁ h₂]; congr; ext
-        rw [sum_single_index (h₁ _)] }
+  toFun f := {
+    toAddMonoidHom :=
+      (liftAddHom fun x ↦ (smulAddHom R A).flip (f x)).comp coeffAddEquiv.toAddMonoidHom
+    map_smul' t' a := by simp [Finsupp.smul_sum, sum_smul_index', mul_smul]
+    map_mul' a₁ a₂ := by
+      simpa [mul_def, sum_sum_index, add_smul, Finsupp.mul_sum, Finsupp.sum_mul,
+        smul_mul_smul_comm] using Finsupp.sum_comm ..
+  }
   invFun F := F.toMulHom.comp (ofMagma R M)
   left_inv f := by ext; simp
   right_inv F := by ext; simp
@@ -105,11 +91,11 @@ instance algebra : Algebra R A[M] where
   smul_def' := fun r a => by
     ext
     dsimp
-    rw [single_one_mul_apply, Algebra.smul_def]
+    rw [coeff_single_one_mul_apply, Algebra.smul_def]
   commutes' := fun r f => by
     ext
     dsimp
-    rw [single_one_mul_apply, mul_single_one_apply, Algebra.commutes]
+    rw [coeff_single_one_mul_apply, coeff_mul_single_one_apply, Algebra.commutes]
 
 /-- `MonoidAlgebra.single 1` as an `AlgHom` -/
 @[to_additive (dont_translate := R A) (attr := simps! apply)
@@ -153,8 +139,8 @@ def curryAlgEquiv : A[M × N] ≃ₐ[R] A[N][M] where
   toRingEquiv := curryRingEquiv
   commutes' r := by
     ext
-    simp [MonoidAlgebra, algebraMap, Algebra.algebraMap, singleOneRingHom, curryRingEquiv,
-      EquivLike.toEquiv, singleAddHom, curryAddEquiv]
+    simp [algebraMap, Algebra.algebraMap, singleOneRingHom, curryRingEquiv, EquivLike.toEquiv,
+      singleAddHom, curryAddEquiv]
 
 @[to_additive (attr := simp)]
 lemma curryAlgEquiv_single (m : M) (n : N) (a : A) :
@@ -163,7 +149,7 @@ lemma curryAlgEquiv_single (m : M) (n : N) (a : A) :
 @[to_additive (attr := simp)]
 lemma curryAlgEquiv_symm_single (m : M) (n : N) (a : A) :
     (curryAlgEquiv R).symm (single m <| single n a) = (single (m, n) a) := by
-  classical exact Finsupp.uncurry_single ..
+  simp [curryAlgEquiv, AlgEquiv.symm_apply_eq]
 
 end Algebra
 
@@ -224,11 +210,11 @@ def lift : (M →* A) ≃ (R[M] →ₐ[R] A) where
   right_inv F := by ext; simp
 
 theorem lift_apply' (F : M →* A) (f : R[M]) :
-    lift R A M F f = f.sum fun a b => algebraMap R A b * F a :=
+    lift R A M F f = f.coeff.sum fun a b => algebraMap R A b * F a :=
   rfl
 
 theorem lift_apply (F : M →* A) (f : R[M]) :
-    lift R A M F f = f.sum fun a b => b • F a := by simp only [lift_apply', Algebra.smul_def]
+    lift R A M F f = f.coeff.sum fun a b => b • F a := by simp only [lift_apply', Algebra.smul_def]
 
 theorem lift_def (F : M →* A) : ⇑(lift R A M F) = liftNC (algebraMap R A) F := rfl
 
@@ -247,17 +233,16 @@ theorem lift_unique' (F : R[M] →ₐ[R] A) : F = lift R A M ((F : R[M] →* A).
 /-- Decomposition of a `R`-algebra homomorphism from `R[M]` by
 its values on `F (single a 1)`. -/
 theorem lift_unique (F : R[M] →ₐ[R] A) (f : R[M]) :
-    F f = f.sum fun a b => b • F (single a 1) := by
+    F f = f.coeff.sum fun a b => b • F (single a 1) := by
   conv_lhs =>
     rw [lift_unique' F]
     simp [lift_apply]
 
-set_option backward.isDefEq.respectTransparency false in
 theorem lift_mapRangeRingHom_algebraMap [CommSemiring S] [Algebra S A]
     [Algebra R S] [IsScalarTower R S A]
     (f : M →* A) (x : R[M]) :
     lift _ _ _ f (mapRangeRingHom _ (algebraMap R S) x) = lift _ _ _ f x := by
-  induction x using Finsupp.induction with
+  induction x using induction with
   | zero => simp
   | single_add a b f _ _ ih => simp [ih]
 
@@ -290,16 +275,16 @@ def domCongr (e : M ≃* N) : A[M] ≃ₐ[R] A[N] where
   toRingEquiv := mapDomainRingEquiv A e
   commutes' _ := by ext; simp
 
-@[to_additive (attr := simp)]
-lemma domCongr_apply (e : M ≃* N) (x : A[M]) (n : N) : domCongr R A e x n = x (e.symm n) := by
-  simp [domCongr]
-
 @[to_additive]
 theorem domCongr_toAlgHom (e : M ≃* N) : (domCongr R A e).toAlgHom = mapDomainAlgHom R A e := rfl
 
 @[to_additive (attr := simp)]
-lemma domCongr_support (e : M ≃* N) (f : A[M]) : (domCongr R A e f).support = f.support.map e := by
-  ext; simp
+lemma coeff_domCongr_apply (e : M ≃* N) (f : A[M]) (n : N) :
+    (domCongr R A e f).coeff n = f.coeff (e.symm n) := by simp [domCongr]
+
+@[to_additive (attr := simp)]
+lemma domCongr_support (e : M ≃* N) (x : A[M]) :
+    (domCongr R A e x).coeff.support = x.coeff.support.map e := by simp [domCongr, equivMapDomain]
 
 @[to_additive (attr := simp)]
 theorem domCongr_single (e : M ≃* N) (m : M) (a : A) :
@@ -318,7 +303,7 @@ theorem domCongr_symm (e : M ≃* N) : (domCongr R A e).symm = domCongr R A e.sy
 
 variable (R) in
 /-- Nested monoid algebras can be taken in an arbitrary order. -/
-@[to_additive (dont_translate := R)
+@[to_additive
 /-- Nested monoid algebras can be taken in an arbitrary order. -/]
 def commAlgEquiv : A[M][N] ≃ₐ[R] A[N][M] :=
   (curryAlgEquiv _).symm.trans <| .trans (domCongr _ _ <| .prodComm ..) (curryAlgEquiv _)
@@ -330,6 +315,14 @@ lemma symm_commAlgEquiv : (commAlgEquiv R : A[M][N] ≃ₐ[R] A[N][M]).symm = co
 lemma commAlgEquiv_single_single (m : M) (n : N) (a : A) :
     commAlgEquiv R (single m <| single n a) = single n (single m a) :=
   commRingEquiv_single_single ..
+
+@[to_additive (dont_translate := A) (attr := simp)]
+lemma commAlgEquiv_single_one (m : M) :
+    commAlgEquiv R (single m (1 : A[N])) = single 1 (single m 1) := commRingEquiv_single_one ..
+
+@[to_additive (dont_translate := A) (attr := simp)]
+lemma commAlgEquiv_single_one_single (m : M) :
+    commAlgEquiv R (single 1 <| single m 1) = (single m (1 : A[N])) := commRingEquiv_single_one_single ..
 
 end lift
 
@@ -360,8 +353,8 @@ lemma toRingHom_mapRangeAlgHom (f : A →ₐ[R] B) :
     mapRangeAlgHom M f = mapRangeRingHom M f.toRingHom := rfl
 
 @[to_additive (attr := simp)]
-lemma mapRangeAlgHom_apply (f : A →ₐ[R] B) (x : A[M]) (m : M) :
-    mapRangeAlgHom M f x m = f (x m) := mapRangeRingHom_apply f.toRingHom x m
+lemma coeff_mapRangeAlgHom (f : A →ₐ[R] B) (x : A[M]) (m : M) :
+    (mapRangeAlgHom M f x).coeff m = f (x.coeff m) := by simp [mapRangeAlgHom]
 
 @[to_additive (attr := simp)]
 lemma mapRangeAlgHom_single (f : A →ₐ[R] B) (m : M) (a : A) :
@@ -420,7 +413,7 @@ def equivariantOfLinearOfComm
   toFun := f
   map_add' v v' := by simp
   map_smul' c v := by
-    refine Finsupp.induction c ?_ ?_
+    refine induction c ?_ ?_
     · simp
     · intro g r c' _nm _nz w
       dsimp at *
@@ -481,17 +474,24 @@ theorem nonUnitalAlgHom_ext' [DistribMulAction R A] {φ₁ φ₂ : R[M] →ₙ�
     (h : φ₁.toMulHom.comp (ofMagma R M) = φ₂.toMulHom.comp (ofMagma R M)) : φ₁ = φ₂ :=
   nonUnitalAlgHom_ext R <| DFunLike.congr_fun h
 
+set_option backward.isDefEq.respectTransparency false in
 /-- The functor `M ↦ R[M]`, from the category of magmas to the category of
 non-unital, non-associative algebras over `R` is adjoint to the forgetful functor in the other
 direction. -/
 @[simps apply_apply symm_apply]
 def liftMagma [Module R A] [IsScalarTower R A A] [SMulCommClass R A A] :
-    (Multiplicative M →ₙ* A) ≃ (R[M] →ₙₐ[R] A) :=
-  { (MonoidAlgebra.liftMagma R : (Multiplicative M →ₙ* A) ≃ (_ →ₙₐ[R] A)) with
-    toFun f :=
-      { (MonoidAlgebra.liftMagma R f :) with
-        toFun := fun a => sum a fun m t => t • f (Multiplicative.ofAdd m) }
-    invFun f := f.toMulHom.comp (ofMagma R M) }
+    (Multiplicative M →ₙ* A) ≃ (R[M] →ₙₐ[R] A) where
+  toFun f := {
+    toAddMonoidHom :=
+      (liftAddHom fun x ↦ (smulAddHom R A).flip (f <| .ofAdd x)).comp coeffAddEquiv.toAddMonoidHom
+    map_smul' t' a := by simp [Finsupp.smul_sum, sum_smul_index', mul_smul]
+    map_mul' a₁ a₂ := by
+      simpa [mul_def, sum_sum_index, add_smul, Finsupp.mul_sum, Finsupp.sum_mul,
+        smul_mul_smul_comm] using Finsupp.sum_comm ..
+  }
+  invFun F := F.toMulHom.comp (ofMagma R M)
+  left_inv f := by ext; simp
+  right_inv F := by ext; simp
 
 end NonUnitalNonAssocAlgebra
 
@@ -527,11 +527,10 @@ def lift : (Multiplicative M →* A) ≃ (R[M] →ₐ[R] A) where
   right_inv F := by ext; simp
 
 theorem lift_apply' (F : Multiplicative M →* A) (f : R[M]) :
-    lift R A M F f = f.sum fun a b => algebraMap R A b * F (Multiplicative.ofAdd a) :=
-  rfl
+    lift R A M F f = f.coeff.sum fun a b => algebraMap R A b * F (.ofAdd a) := rfl
 
 theorem lift_apply (F : Multiplicative M →* A) (f : R[M]) :
-    lift R A M F f = f.sum fun a b => b • F (Multiplicative.ofAdd a) := by
+    lift R A M F f = f.coeff.sum fun a b => b • F (.ofAdd a) := by
   simp only [lift_apply', Algebra.smul_def]
 
 theorem lift_def (F : Multiplicative M →* A) :
@@ -562,17 +561,16 @@ theorem lift_unique' (F : R[M] →ₐ[R] A) :
 /-- Decomposition of a `R`-algebra homomorphism from `R[M]` by
 its values on `F (single a 1)`. -/
 theorem lift_unique (F : R[M] →ₐ[R] A) (f : R[M]) :
-    F f = f.sum fun a b => b • F (single a 1) := by
+    F f = f.coeff.sum fun m r => r • F (single m 1) := by
   conv_lhs =>
     rw [lift_unique' F]
     simp [lift_apply]
 
-set_option backward.isDefEq.respectTransparency false in
 theorem lift_mapRangeRingHom_algebraMap [CommSemiring S] [Algebra S A]
     [Algebra R S] [IsScalarTower R S A]
     (f : Multiplicative M →* A) (x : R[M]) :
     lift _ _ _ f (mapRangeRingHom _ (algebraMap R S) x) = lift _ _ _ f x := by
-  induction x using Finsupp.induction with
+  induction x using induction with
   | zero => simp
   | single_add a b f _ _ ih => simp [ih]
 

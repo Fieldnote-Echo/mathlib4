@@ -30,14 +30,16 @@ namespace MvPolynomial
 
 variable {R : Type*} [CommRing R] [IsDomain R]
 
+set_option allowUnsafeReducibility true in
+attribute [local reducible] MvPolynomial in
 private theorem funext_fin {n : ℕ} {p : MvPolynomial (Fin n) R}
     (s : Fin n → Set R) (hs : ∀ i, (s i).Infinite)
     (h : ∀ x ∈ Set.pi .univ s, eval x p = 0) : p = 0 := by
   induction n with
   | zero =>
     apply (MvPolynomial.isEmptyRingEquiv R (Fin 0)).injective
-    rw [map_zero]
-    convert h _ finZeroElim
+    convert h 0 finZeroElim using 1
+    simp [isEmptyRingEquiv_eq_coeff_zero, constantCoeff]
   | succ n ih =>
     apply (finSuccEquiv R n).injective
     rw [map_zero]
@@ -46,7 +48,7 @@ private theorem funext_fin {n : ℕ} {p : MvPolynomial (Fin n) R}
     rintro _ ⟨r, hr, rfl⟩
     refine ih (s ·.succ) (fun _ ↦ hs _) fun x hx ↦ ?_
     rw [eval_polynomial_eval_finSuccEquiv]
-    exact h _ fun i _ ↦ i.cases (by simpa using hr) (by simpa using hx)
+    exact h _ fun i _ ↦ i.cases (by simpa [eval_C] using hr) (by simpa using hx)
 
 section
 
