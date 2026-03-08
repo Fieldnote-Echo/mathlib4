@@ -143,7 +143,7 @@ lemma rename_esymmAlgHom (e : σ ≃ τ) :
     (renameSymmetricSubalgebra e).toAlgHom.comp (esymmAlgHom σ R n) = esymmAlgHom τ R n := by
   ext i : 2
   simp_rw [AlgHom.comp_apply, esymmAlgHom, aeval_X, AlgEquiv.toAlgHom_eq_coe, AlgHom.coe_coe,
-    renameSymmetricSubalgebra_apply_coe, rename_esymm]
+    renameSymmetricSubalgebra_symm_apply_coe_coeff, rename_esymm]
 
 variable (σ) in
 /-- The image of a monomial under `esymmAlgHom`. -/

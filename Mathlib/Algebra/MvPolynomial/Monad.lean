@@ -338,13 +338,21 @@ instance lawfulFunctor : LawfulFunctor fun σ => MvPolynomial σ R where
   id_map := by intros; simp [(· <$> ·)]
   comp_map := by intros; simp [(· <$> ·)]
 
+set_option allowUnsafeReducibility true in
+attribute [local reducible] MvPolynomial in
 instance lawfulMonad : LawfulMonad fun σ => MvPolynomial σ R where
   pure_bind := by intros; simp [pure, bind]
   bind_assoc := by intros; simp [bind, ← bind₁_comp_bind₁]
-  seqLeft_eq := by intros; simp [SeqLeft.seqLeft, Seq.seq, (· <$> ·), bind₁_rename]; rfl
+  seqLeft_eq c y := by
+    ext a
+    induction a using Finsupp.induction
+    simp [SeqLeft.seqLeft, Seq.seq, (· <$> ·), bind₁_rename]
+    simp [bind₁, X, monomial, rename]
+    rfl
+
   seqRight_eq := by intros; simp [SeqRight.seqRight, Seq.seq, (· <$> ·), bind₁_rename]; rfl
   pure_seq := by intros; simp [(· <$> ·), pure, Seq.seq]
-  bind_pure_comp := by aesop
+  bind_pure_comp := by intros; simp [bind, bind₁, pure, Seq.seq, Functor.map, rename]
   bind_map := by aesop
 
 /-
