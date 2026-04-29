@@ -40,6 +40,22 @@ protected theorem secondCountableTopology [SecondCountableTopology Y]
 protected theorem baireSpace [BaireSpace X] (f : X ≃ₜ Y) : BaireSpace Y :=
   f.isOpenQuotientMap.baireSpace
 
+@[simp]
+theorem comp_isOpenQuotientMap_iff (h : X ≃ₜ Y) {f : Z → X} :
+    IsOpenQuotientMap (h ∘ f) ↔ IsOpenQuotientMap f := by
+  refine ⟨?_, fun hf => h.isOpenQuotientMap.comp hf⟩
+  intro hf
+  rw [← Function.id_comp f, ← h.symm_comp_self, Function.comp_assoc]
+  exact h.symm.isOpenQuotientMap.comp hf
+
+@[simp]
+theorem comp_isOpenQuotientMap_iff' (h : X ≃ₜ Y) {f : Y → Z} :
+    IsOpenQuotientMap (f ∘ h) ↔ IsOpenQuotientMap f := by
+  refine ⟨?_, fun hf => hf.comp h.isOpenQuotientMap⟩
+  intro hf
+  rw [← Function.comp_id f, ← h.self_comp_symm, ← Function.comp_assoc]
+  exact hf.comp h.symm.isOpenQuotientMap
+
 /-- If `h : X → Y` is a homeomorphism, `h(s)` is compact iff `s` is. -/
 @[simp]
 theorem isCompact_image {s : Set X} (h : X ≃ₜ Y) : IsCompact (h '' s) ↔ IsCompact s :=
