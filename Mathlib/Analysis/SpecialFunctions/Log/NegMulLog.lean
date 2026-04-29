@@ -174,6 +174,12 @@ lemma negMulLog_eq_neg : negMulLog = fun x ↦ -(x * log x) := by simp [negMulLo
 lemma negMulLog_nonneg {x : ℝ} (h1 : 0 ≤ x) (h2 : x ≤ 1) : 0 ≤ negMulLog x := by
   simpa only [negMulLog_eq_neg, neg_nonneg] using mul_log_nonpos h1 h2
 
+lemma negMulLog_nonpos {x : ℝ} (h : 1 ≤ x) : negMulLog x ≤ 0 := by
+  simpa only [negMulLog_eq_neg, neg_nonpos] using mul_log_nonneg h
+
+lemma negMulLog_pos {x : ℝ} (h1 : 0 < x) (h2 : x < 1) : 0 < negMulLog x := by
+  simpa only [negMulLog_eq_neg, neg_pos] using mul_log_neg h1 h2
+
 lemma negMulLog_mul (x y : ℝ) : negMulLog (x * y) = y * negMulLog x + x * negMulLog y := by
   simp only [negMulLog, neg_mul]
   by_cases hx : x = 0
