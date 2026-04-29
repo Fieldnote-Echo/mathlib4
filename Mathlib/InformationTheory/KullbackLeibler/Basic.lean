@@ -64,6 +64,13 @@ lemma klDiv_of_ac_of_integrable (h1 : μ ≪ ν) (h2 : Integrable (llr μ ν) μ
   rw [klDiv_def]
   exact if_pos ⟨h1, h2⟩
 
+lemma klDiv_of_isProbabilityMeasure_of_integrable
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
+    (h : μ ≪ ν) (h_int : Integrable (llr μ ν) μ) :
+    klDiv μ ν = ENNReal.ofReal (∫ a, llr μ ν a ∂μ) := by
+  rw [klDiv_of_ac_of_integrable h h_int]
+  simp [measureReal_def]
+
 @[simp]
 lemma klDiv_of_not_ac (h : ¬ μ ≪ ν) : klDiv μ ν = ∞ := by
   rw [klDiv_def]
@@ -166,6 +173,11 @@ lemma toReal_klDiv_of_measure_eq (h : μ ≪ ν) (h_eq : μ univ = ν univ) :
   by_cases h_int : Integrable (llr μ ν) μ
   · simp [toReal_klDiv h h_int, h_eq, measureReal_def]
   · rw [klDiv_of_not_integrable h_int, integral_undef h_int, ENNReal.toReal_top]
+
+lemma toReal_klDiv_of_isProbabilityMeasure
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] (h : μ ≪ ν) :
+    (klDiv μ ν).toReal = ∫ a, llr μ ν a ∂μ :=
+  toReal_klDiv_of_measure_eq h (by simp)
 
 lemma toReal_klDiv_eq_integral_klFun (h : μ ≪ ν) :
     (klDiv μ ν).toReal = ∫ x, klFun (μ.rnDeriv ν x).toReal ∂ν := by
