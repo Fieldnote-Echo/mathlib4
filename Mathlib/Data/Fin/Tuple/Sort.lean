@@ -167,6 +167,15 @@ theorem eq_sort_iff :
   · obtain he | hl := (h.1 hij.le).eq_or_lt <;> apply Prod.Lex.toLex_lt_toLex.2
     exacts [Or.inr ⟨he, h.2 i j hij he⟩, Or.inl hl]
 
+/-- Composing a tuple with a strictly monotone map preserves its sorting permutation,
+including the index order used to break ties. -/
+@[simp]
+theorem sort_comp_strictMono {β : Type*} [LinearOrder β] (v : Fin n → α)
+    {g : α → β} (hg : StrictMono g) : sort (g ∘ v) = sort v := by
+  obtain ⟨hmono, htie⟩ := eq_sort_iff.mp (rfl : sort v = sort v)
+  exact (eq_sort_iff.mpr
+    ⟨hg.monotone.comp hmono, fun i j hij h ↦ htie i j hij (hg.injective h)⟩).symm
+
 /-- The permutation that sorts `f` is the identity if and only if `f` is monotone. -/
 theorem sort_eq_refl_iff_monotone : sort f = Equiv.refl _ ↔ Monotone f := by
   rw [eq_comm, eq_sort_iff, Equiv.coe_refl, Function.comp_id]
