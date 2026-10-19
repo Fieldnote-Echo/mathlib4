@@ -33,7 +33,7 @@ This module defines the eccentricity of vertices, the diameter, and the radius o
 assert_not_exists Field
 
 namespace SimpleGraph
-variable {α : Type*} {G G' : SimpleGraph α}
+variable {α β : Type*} {G G' : SimpleGraph α} {H : SimpleGraph β}
 
 section eccent
 
@@ -224,9 +224,20 @@ lemma connected_iff_ediam_ne_top [Nonempty α] [Finite α] : G.Connected ↔ G.e
   ⟨fun h ↦ huv ▸ edist_ne_top_iff_reachable.mpr (h u v),
    fun h ↦ G.connected_of_ediam_ne_top h⟩
 
+lemma Hom.ediam_le_of_surjective (f : G →g H) (hf : Function.Surjective f) :
+    H.ediam ≤ G.ediam := by
+  refine ediam_le_of_edist_le fun u v ↦ ?_
+  obtain ⟨u, rfl⟩ := hf u
+  obtain ⟨v, rfl⟩ := hf v
+  exact (f.edist_le u v).trans edist_le_ediam
+
+lemma Iso.ediam_eq (f : G ≃g H) : G.ediam = H.ediam :=
+  le_antisymm (f.symm.toHom.ediam_le_of_surjective f.symm.surjective)
+    (f.toHom.ediam_le_of_surjective f.surjective)
+
 @[gcongr]
 lemma ediam_anti (h : G ≤ G') : G'.ediam ≤ G.ediam :=
-  iSup₂_mono fun _ _ ↦ edist_anti h
+  (Hom.ofLE h).ediam_le_of_surjective Function.surjective_id
 
 @[simp]
 lemma ediam_bot [Nontrivial α] : (⊥ : SimpleGraph α).ediam = ⊤ :=
@@ -267,6 +278,9 @@ noncomputable def diam (G : SimpleGraph α) :=
 
 lemma diam_def : G.diam = (⨆ p : α × α, G.edist p.1 p.2).toNat := by
   rw [diam, ediam_def]
+
+lemma Iso.diam_eq (f : G ≃g H) : G.diam = H.diam :=
+  congrArg ENat.toNat f.ediam_eq
 
 lemma dist_le_diam (h : G.ediam ≠ ⊤) {u v : α} : G.dist u v ≤ G.diam :=
   ENat.toNat_le_toNat edist_le_ediam h
