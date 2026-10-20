@@ -231,6 +231,19 @@ protected theorem Connected.exists_walk_length_eq_dist (hconn : G.Connected) (u 
 theorem dist_le (p : G.Walk u v) : G.dist u v ≤ p.length :=
   dist_eq_sInf ▸ Nat.sInf_le ⟨p, rfl⟩
 
+/-- A natural-valued function that increases by at most one along each edge
+bounds the distance between reachable vertices from below. -/
+theorem le_add_dist_of_lipschitz {f : V → ℕ}
+    (hf : ∀ a b, G.Adj a b → f a ≤ f b + 1) (hr : G.Reachable u v) :
+    f u ≤ f v + G.dist u v := by
+  obtain ⟨p, hp⟩ := hr.exists_walk_length_eq_dist
+  rw [← hp]
+  clear hr hp
+  induction p with
+  | nil => simp
+  | cons h p ih =>
+    simpa [Nat.add_assoc] using (hf _ _ h).trans (Nat.add_le_add_right ih 1)
+
 theorem natCast_dist_le_edist : G.dist u v ≤ G.edist u v :=
   ENat.natCast_toNat_le_self _
 
